@@ -1,0 +1,511 @@
+ネットワーク作成グループ 作業フロー
+中小企業向け模擬エンタープライズネットワーク構築プロジェクト
+
+1. ネットワーク作成グループの担当範囲
+ネットワーク作成グループは、CML上に中小企業向け模擬エンタープライズネットワークを構築する役割を担当する。
+Core層、Distribution層、Access層の3層構造を作成し、冗長性、通信制御、管理系分離、QoS、監視連携、CMLとVirtualBoxの接続を担当する。
+
+今回の重要な方針として、サーバーアクセス層は段階的に構築する。
+
+第1段階:
+SERVER-ACCESS1だけでCMLとVirtualBox接続を成功させる。
+
+第2段階:
+SERVER-ACCESS2を追加してサーバーアクセス層を冗長化する。
+
+これにより、最初は接続の難易度を抑え、基本通信が安定した後に企業ネットワークに近い冗長構成へ拡張する。
+
+2. CML上の想定ノード
+以下のノードをCML上に作成する。
+
+Core層:
+- CORE1
+- CORE2
+
+Distribution層:
+- DIST1
+- DIST2
+
+User Access層:
+- USER-ACCESS1
+- USER-ACCESS2
+
+Server Access層:
+- SERVER-ACCESS1
+- SERVER-ACCESS2
+
+外部接続:
+- EDGE1
+- ISP相当ノード
+- External Connector
+
+必要に応じて:
+- 検証用PCノード
+- 疎通試験用ノード
+
+3. 作業全体フロー
+ネットワーク作成グループは、以下の順序で作業を進める。
+
+1. 共通設計の確認
+2. CMLトポロジ作成
+3. 各機器の基本設定
+4. VLAN/Trunk/Access設定
+5. Core-Distribution間のL3設定
+6. Distribution層のSVI/HSRP設定
+7. Access層の設定
+8. Server Access層の第1段階構築
+9. CMLとVirtualBoxの接続
+10. ACL/管理アクセス制御
+11. 監視・ログ・NTP・AAA連携
+12. QoS/帯域制御設定
+13. Server Access層の第2段階冗長化
+14. 障害試験
+15. ドキュメント整理
+
+4. フェーズ1：共通設計の確認
+作業内容:
+- サーバー作成グループとVLAN設計を確認する
+- IPアドレス設計を確認する
+- 各サーバーのIPアドレスを確認する
+- デフォルトゲートウェイを確認する
+- CMLとVirtualBoxの接続方式を決める
+- 管理ネットワークとサーバーネットワークの接続方針を決める
+- Server Access層の段階的構築方針を確認する
+
+確認項目:
+- VLAN10 営業部
+- VLAN20 人事部
+- VLAN30 総務部
+- VLAN40 システム開発部
+- VLAN50 システム管理部
+- VLAN60 サーバ用
+- VLAN70 管理用
+- VLAN80 監視・ログ用
+- VLAN90 検証・ゲスト用
+- VLAN100 新規事業用予備
+- VLAN110 バックアップ用
+
+成果物:
+- VLAN設計表
+- IPアドレス設計表
+- ルーティング設計表
+- CML接続方針
+- サーバーアクセス層段階構築方針
+
+5. フェーズ2：CMLトポロジ作成
+作業内容:
+- CML上にCore層、Distribution層、Access層を配置する
+- Core-Distribution間を冗長接続する
+- Distribution-User Access間を冗長接続する
+- Distribution-Server Access間を接続する
+- EDGE1と外部接続を配置する
+- External Connectorを配置する
+
+第1段階のServer Access構成:
+- SERVER-ACCESS1のみ配置
+- SERVER-ACCESS1をDIST1/DIST2へ接続
+- SERVER-ACCESS1からExternal Connector経由でVirtualBoxへ接続
+
+第2段階のServer Access構成:
+- SERVER-ACCESS2を追加
+- SERVER-ACCESS1/SERVER-ACCESS2をDIST1/DIST2へ冗長接続
+- VirtualBox側の接続方式を調整
+- サーバーアクセス層の障害試験を実施
+
+成果物:
+- CMLトポロジファイル
+- CML構成図
+- 物理・仮想接続図
+
+6. フェーズ3：各機器の基本設定
+作業内容:
+- ホスト名を設定する
+- enable secretを設定する
+- 管理ユーザーを作成する
+- SSHを有効化する
+- Telnetを無効化する
+- domain-nameを設定する
+- logging設定を行う
+- NTP設定を行う
+- 管理IPを設定する
+- 不要ポートをshutdownする
+
+実装する機能:
+- SSH
+- 管理ユーザー
+- VTY設定
+- local fallback
+- logging
+- NTP
+- 管理用IP
+
+成果物:
+- 初期設定ファイル
+- 機器別設定メモ
+
+7. フェーズ4：VLAN / Trunk / Access設定
+作業内容:
+- 各VLANを作成する
+- User Access層に部署用VLANを設定する
+- Server Access層にサーバー用VLANを設定する
+- trunkポートを設定する
+- allowed vlanを制限する
+- native VLANを設計する
+- 不要VLANを通さないようにする
+
+実装する機能:
+- VLAN
+- access port
+- trunk port
+- allowed vlan
+- native VLAN
+- Server Access用trunk
+- User Access用access port
+
+成果物:
+- VLAN設定
+- ポート割当表
+- trunk確認結果
+
+8. フェーズ5：Core-Distribution間L3設定
+作業内容:
+- Core層とDistribution層の間をrouted linkとして設定する
+- OSPFを設定する
+- OSPF neighborを確認する
+- passive-interfaceを設定する
+- 必要に応じてルート集約を検討する
+
+実装する機能:
+- routed port
+- OSPF
+- OSPF Area 0
+- ルーティング冗長
+- passive-interface
+- default routeの検討
+
+確認コマンド例:
+- show ip ospf neighbor
+- show ip route
+- show ip protocols
+
+成果物:
+- ルーティング設計表
+- OSPF確認結果
+- ルーティングテーブル確認結果
+
+9. フェーズ6：Distribution層のSVI/HSRP設定
+作業内容:
+- 各VLANのSVIをDIST1/DIST2に作成する
+- HSRPを設定する
+- VLANごとにactiveを分散する
+- HSRP priorityを設定する
+- preemptを設定する
+- uplink障害時のtrackを設定する
+
+active分散例:
+DIST1 active:
+- VLAN10 営業部
+- VLAN30 総務部
+- VLAN50 システム管理部
+- VLAN80 監視・ログ用
+
+DIST2 active:
+- VLAN20 人事部
+- VLAN40 システム開発部
+- VLAN60 サーバ用
+- VLAN110 バックアップ用
+
+実装する機能:
+- SVI
+- ip routing
+- HSRP
+- HSRP priority
+- HSRP preempt
+- HSRP tracking
+- VLANごとのactive分散
+
+確認コマンド例:
+- show standby brief
+- show ip interface brief
+- show ip route
+
+成果物:
+- SVI一覧
+- HSRP設計表
+- HSRP確認結果
+
+10. フェーズ7：User Access層設定
+作業内容:
+- USER-ACCESS1/USER-ACCESS2を設定する
+- 社員端末用ポートを設定する
+- Distribution層へのuplinkを設定する
+- STPを設定する
+- LACP EtherChannelを検討・設定する
+- Access層のセキュリティ機能を設定する
+
+実装する機能:
+- PortFast
+- BPDU Guard
+- DHCP Snooping
+- Dynamic ARP Inspection
+- Port Security
+- UDLD
+- LACP EtherChannel
+- Rapid PVST+
+- STP root分散
+
+確認コマンド例:
+- show spanning-tree
+- show etherchannel summary
+- show port-security
+- show ip dhcp snooping
+- show ip arp inspection
+
+成果物:
+- User Access設定
+- Access層セキュリティ設定
+- STP確認結果
+
+11. フェーズ8：Server Access層 第1段階
+目的:
+第1段階では、SERVER-ACCESS1だけでCMLとVirtualBoxの接続を成功させる。
+最初からサーバーアクセス層を完全冗長化すると、VirtualBox側のNIC設計やBridge設計が複雑になるため、まずは1台構成で接続を安定させる。
+
+作業内容:
+- SERVER-ACCESS1をCML上に配置する
+- SERVER-ACCESS1をDIST1/DIST2へ接続する
+- SERVER-ACCESS1にサーバー用VLANを設定する
+- External ConnectorをSERVER-ACCESS1側へ接続する
+- VirtualBoxサーバ群と疎通確認する
+
+対象VLAN:
+- VLAN60 サーバ用
+- VLAN70 管理用
+- VLAN80 監視・ログ用
+- VLAN110 バックアップ用
+
+実装する機能:
+- Server Access VLAN
+- trunk
+- External Connector
+- CML-VirtualBox接続
+- サーバー用SVIへの到達性
+- 管理用通信
+- 監視用通信
+- バックアップ用通信
+
+確認項目:
+- CML機器からInfra-01へpingできる
+- CML機器からApp-01へpingできる
+- CML機器からOps-01へpingできる
+- CML機器からSecMgmt-01へpingできる
+- CML機器からBackup-01へpingできる
+- 社員PCからWebサーバへアクセスできる
+- 管理PCからJump Serverへアクセスできる
+- 監視サーバからCML機器を監視できる
+
+成果物:
+- SERVER-ACCESS1設定
+- CML-VirtualBox接続試験結果
+- 第1段階疎通確認表
+
+12. フェーズ9：ACL・管理アクセス制御
+作業内容:
+- 部署間通信を制御するACLを作成する
+- 各部署から自部署用サーバ領域のみ許可する
+- 他部署サーバ領域へのアクセスを拒否する
+- システム管理部から全ネットワークへの管理アクセスを許可する
+- 社員VLANから管理VLANへのアクセスを拒否する
+- VTY ACLでSSH接続元を制限する
+
+実装する機能:
+- ACL
+- VTY ACL
+- SSH only
+- Telnet禁止
+- 管理アクセス制限
+- Backup VLAN制御
+- Guest/Lab VLAN制限
+
+成果物:
+- ACL設計表
+- ACL設定ファイル
+- 通信制御試験結果
+
+13. フェーズ10：管理VRF・AAA・NTP・Syslog連携
+作業内容:
+- 管理VRFを設定する
+- TACACS+サーバへ到達できるようにする
+- RADIUSサーバへ到達できるようにする
+- Syslogサーバへログ転送する
+- NTP Authenticationを設定する
+- SNMPv3監視を設定する
+
+実装する機能:
+- 管理VRF
+- SSH管理
+- AAA
+- RADIUS
+- TACACS+
+- local fallback
+- TACACS+ Accounting
+- NTP Authentication
+- Syslog転送
+- SNMPv3
+
+確認項目:
+- 管理VRF経由でSecMgmt-01へ到達できる
+- TACACS+でログインできる
+- RADIUS認証が機能する
+- NTPが認証付きで同期する
+- SyslogがOps-01へ送信される
+- SNMPv3で監視できる
+
+成果物:
+- 管理VRF設計書
+- AAA設定
+- NTP設定
+- Syslog設定
+- 監視連携試験結果
+
+14. フェーズ11：QoS・帯域制御設定
+作業内容:
+- 業務系通信と管理系通信を優先する
+- バックアップ通信を低優先にする
+- Guest/Lab通信を最低優先にする
+- 障害時に残ったuplinkへ重要通信を優先的に流す
+- バックアップ中の帯域圧迫を抑える
+
+通信クラス:
+最優先:
+- OSPF
+- HSRP
+- SSH
+- TACACS+
+- RADIUS
+- SNMPv3
+- NTP
+- Syslog
+- 監視アラート
+
+高優先:
+- 業務Web
+- 業務File
+- DNS
+- DHCP
+- 社内業務通信
+
+低優先:
+- バックアップ
+- 大容量ファイル転送
+- VMイメージ転送
+
+最低優先:
+- Guest/Lab VLAN
+- 検証通信
+
+実装する機能:
+- class-map
+- policy-map
+- service-policy
+- Backup VLAN低優先化
+- Guest/Lab低優先化
+- 障害時バックアップ停止方針
+- uplink使用率監視
+
+成果物:
+- QoS設計書
+- QoS設定
+- 帯域制御試験結果
+
+15. フェーズ12：Server Access層 第2段階
+目的:
+第2段階では、SERVER-ACCESS2を追加し、サーバーアクセス層を冗長化する。
+これにより、SERVER-ACCESS1が停止してもVirtualBoxサーバ群への到達性を維持できる構成を目指す。
+
+作業内容:
+- SERVER-ACCESS2をCML上に追加する
+- SERVER-ACCESS2をDIST1/DIST2へ接続する
+- SERVER-ACCESS1/SERVER-ACCESS2間の設計を整理する
+- 必要に応じてLACPやSTPを調整する
+- VirtualBox側の接続方式を見直す
+- サーバーアクセス層の障害試験を実施する
+
+構成方針:
+- SERVER-ACCESS1とSERVER-ACCESS2を両方Distribution層へ接続する
+- サーバー用VLAN、管理用VLAN、監視用VLAN、バックアップ用VLANを通す
+- L2ループが発生しないようSTPを確認する
+- 可能であれば冗長uplinkまたはEtherChannelを検討する
+
+確認項目:
+- SERVER-ACCESS1停止時にサーバーへ到達できる
+- SERVER-ACCESS2停止時にサーバーへ到達できる
+- DIST1停止時にサーバーへ到達できる
+- DIST2停止時にサーバーへ到達できる
+- バックアップ通信が継続または制限される
+- 監視アラートが発生する
+
+成果物:
+- SERVER-ACCESS2設定
+- サーバーアクセス冗長化設計表
+- 第2段階障害試験結果
+
+16. フェーズ13：ネットワーク障害試験
+作業内容:
+- ネットワーク機器やリンクを停止し、冗長化と業務継続を確認する
+
+障害試験項目:
+- Access uplink断
+- User Access停止
+- Server Access1停止
+- Server Access2停止
+- DIST1停止
+- DIST2停止
+- CORE1停止
+- CORE2停止
+- OSPF neighbor断
+- HSRP切替
+- EtherChannelメンバーリンク断
+- バックアップ中のuplink片系障害
+- QoS動作確認
+- Guest/Lab通信制限確認
+- 障害時80%業務継続確認
+
+確認項目:
+- 業務系通信が継続する
+- 管理系通信が継続する
+- 監視アラートが出る
+- Syslogに記録される
+- バックアップ通信が低優先または停止される
+- HSRPが切り替わる
+- OSPFが再収束する
+- 復旧後にactive分散へ戻る
+
+成果物:
+- ネットワーク障害試験表
+- 試験結果表
+- 障害対応記録
+- 改善点一覧
+
+17. ネットワーク作成グループの最終成果物
+- CMLトポロジファイル
+- 全体構成図
+- 論理ネットワーク図
+- 物理・仮想接続図
+- CMLトポロジ図
+- VLAN設計表
+- IPアドレス設計表
+- ルーティング設計表
+- 冗長化設計表
+- HSRP設計表
+- STP設計表
+- EtherChannel設計表
+- ACL設計表
+- 管理VRF設計書
+- QoS設計書
+- NTP Authentication設計書
+- AAA/RADIUS/TACACS+連携設定
+- CML-VirtualBox接続手順書
+- ネットワーク試験表
+- 障害試験結果
+- ネットワークRunbook

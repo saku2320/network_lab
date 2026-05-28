@@ -1,0 +1,510 @@
+CMLトポロジ図 解説
+中小企業向け模擬エンタープライズネットワーク
+
+1. CMLトポロジ図の概要
+本図は、中小企業向け模擬エンタープライズネットワークをCML（Cisco Modeling Labs）上で構築する際のトポロジを示したものである。
+CML上にCore層、Distribution層、User Access層、Server Access層、Edge接続を配置し、VirtualBox上の仮想サーバ群と連携する構成としている。
+
+このトポロジは、実際の企業ネットワークで利用される3層構造を意識している。
+3層構造とは、以下の層で構成される。
+
+・Core層
+・Distribution層
+・Access層
+
+本構成では、Access層をさらに以下の2種類に分けている。
+
+・User Access層
+・Server Access層
+
+これにより、社員端末を収容するネットワークと、仮想サーバ群を収容するネットワークを分離している。
+
+2. CMLラボ全体の構成
+本トポロジでは、CML上に以下のノードを配置する。
+
+・EDGE1
+・CORE1
+・CORE2
+・DIST1
+・DIST2
+・USER-ACCESS1
+・USER-ACCESS2
+・SERVER-ACCESS1
+・SERVER-ACCESS2
+・EXT-CONN1
+・EXT-CONN2
+
+また、CML外部にはVirtualBox上の仮想サーバ群を配置する。
+
+VirtualBox上のサーバ群:
+・Infra-01
+・App-01
+・Ops-01
+・SecMgmt-01
+・Backup-01
+
+3. EDGE1の役割
+EDGE1は、CMLラボ内のネットワークと外部ネットワーク、または将来の支社接続を想定した境界ルーターである。
+
+主な役割:
+・ISP/Internet相当ノードへの接続
+・将来の支社VPN接続の検証
+・本社ネットワークと外部ネットワークの境界
+・必要に応じたデフォルトルートの受け渡し
+・将来的なNATやVPN設定の検証
+
+本プロジェクトの初期段階では、実際にインターネット公開を行うことは想定しない。
+ただし、将来的な支社接続や外部接続を考慮し、EDGE1を配置している。
+
+4. Core層の構成
+Core層にはCORE1とCORE2を配置する。
+Core層はネットワーク全体の中心となるL3中継層である。
+
+Core層の主な役割:
+・Distribution層とのL3接続
+・OSPFによる動的ルーティング
+・ネットワーク全体の高速中継
+・冗長経路の提供
+・EDGE1への中継
+
+Core層では、できるだけシンプルな構成にする。
+細かなACLや部署間通信制御はCore層ではなく、主にDistribution層で実施する。
+これにより、Core層は高速性と安定性を重視した設計となる。
+
+5. Distribution層の構成
+Distribution層にはDIST1とDIST2を配置する。
+Distribution層は、各VLANの集約、VLAN間ルーティング、デフォルトゲートウェイ冗長、通信制御を担当する。
+
+Distribution層の主な役割:
+・各VLANのSVIを配置する
+・HSRPによるデフォルトゲートウェイ冗長
+・ACLによる通信制御
+・DHCP relay
+・OSPFによるCore層との経路交換
+・User Access層とServer Access層の集約
+・管理用通信、監視通信、バックアップ通信の制御
+
+本構成では、DIST1とDIST2の2台で冗長化する。
+各VLANのデフォルトゲートウェイは、HSRPの仮想IPとして提供する。
+また、待機系が完全に遊休化しないよう、VLANごとにHSRP activeを分散する。
+
+HSRP active分散例:
+DIST1 active:
+・VLAN10 営業部
+・VLAN30 総務部
+・VLAN50 システム管理部
+・VLAN80 監視・ログ用
+
+DIST2 active:
+・VLAN20 人事部
+・VLAN40 システム開発部
+・VLAN60 サーバ用
+・VLAN110 バックアップ用
+
+6. User Access層の構成
+User Access層にはUSER-ACCESS1とUSER-ACCESS2を配置する。
+この層は社員端末を収容するためのAccess層である。
+
+User Access層に接続される端末:
+・営業部端末
+・人事部端末
+・総務部端末
+・システム開発部端末
+・システム管理部端末
+・必要に応じて無線AP
+・必要に応じてIP電話
+・必要に応じてプリンタ
+
+User Access層の対象VLAN:
+・VLAN10 営業部
+・VLAN20 人事部
+・VLAN30 総務部
+・VLAN40 システム開発部
+・VLAN50 システム管理部
+
+User Access層で実装する主な機能:
+・Accessポート設定
+・Trunk設定
+・Rapid PVST+
+・PortFast
+・BPDU Guard
+・Port Security
+・DHCP Snooping
+・Dynamic ARP Inspection
+・Distribution層への冗長uplink
+・必要に応じたLACP EtherChannel
+
+USER-ACCESS1とUSER-ACCESS2を用意することで、端末収容側も冗長化し、片方のAccessスイッチやuplinkに障害が発生した場合の影響を軽減する。
+
+7. Server Access層の構成
+Server Access層にはSERVER-ACCESS1とSERVER-ACCESS2を配置する。
+この層は、VirtualBox上の仮想サーバ群をCMLネットワークに接続するためのAccess層である。
+
+Server Access層の対象VLAN:
+・VLAN60 サーバ用
+・VLAN70 管理用
+・VLAN80 監視・ログ用
+・VLAN110 バックアップ用
+
+Server Access層の主な役割:
+・VirtualBox仮想サーバ群を収容する
+・サーバ用VLANをCMLネットワークへ接続する
+・管理用VLANをCMLネットワークへ接続する
+・監視・ログ用VLANをCMLネットワークへ接続する
+・バックアップ用VLANをCMLネットワークへ接続する
+・Distribution層へ冗長接続する
+
+8. Server Access層の段階構築
+本トポロジでは、Server Access層を段階的に構築する。
+
+8.1 第1段階：SERVER-ACCESS1のみで接続
+第1段階では、SERVER-ACCESS1のみを使用してCMLとVirtualBoxの接続を成功させる。
+
+目的:
+・CMLとVirtualBoxの接続を単純化する
+・まず基本通信を確立する
+・接続トラブルの切り分けをしやすくする
+・DNS、DHCP、Web、SSH、監視、Syslogなどの基本サービスを先に確認する
+
+第1段階の構成:
+VirtualBoxサーバ群
+→ EXT-CONN1
+→ SERVER-ACCESS1
+→ DIST1 / DIST2
+→ Core層
+
+第1段階で確認する通信:
+・CML機器からInfra-01へping
+・CML機器からApp-01へping
+・社員端末からWebサーバへアクセス
+・DNS名前解決
+・DHCPによるIP配布
+・管理PCからJump ServerへSSH
+・Ops-01による監視
+・Syslog送信
+・Backup-01によるバックアップ通信
+
+8.2 第2段階：SERVER-ACCESS2を追加して冗長化
+第2段階では、SERVER-ACCESS2を追加し、Server Access層を冗長化する。
+
+目的:
+・Server Access層の単一障害点を減らす
+・SERVER-ACCESS1障害時でもサーバ群へ到達できるようにする
+・サーバ基盤の可用性を高める
+・企業ネットワークに近い構成へ発展させる
+
+第2段階の構成:
+VirtualBoxサーバ群
+→ EXT-CONN1 / EXT-CONN2
+→ SERVER-ACCESS1 / SERVER-ACCESS2
+→ DIST1 / DIST2
+→ Core層
+
+第2段階で確認する内容:
+・SERVER-ACCESS1停止時のサーバ到達性
+・SERVER-ACCESS2停止時のサーバ到達性
+・DIST1停止時のサーバ到達性
+・DIST2停止時のサーバ到達性
+・STPまたはLACPの動作
+・監視アラートの発生
+・バックアップ通信の継続または制限
+
+9. External Connectorの役割
+EXT-CONN1およびEXT-CONN2は、CML内の仮想ネットワークとVirtualBox上の仮想サーバ群を接続するために使用する。
+
+EXT-CONN1:
+第1段階で使用するExternal Connectorである。
+SERVER-ACCESS1に接続し、CMLとVirtualBox間の基本通信を確立する。
+
+EXT-CONN2:
+第2段階で追加するExternal Connectorである。
+SERVER-ACCESS2と連携し、Server Access層の冗長化を行う。
+
+External Connector利用時の注意点:
+・接続先のホストNICまたは仮想アダプタを正しく選択する
+・不要なVLANを外部へ流さない
+・DHCP通信が学校ネットワークや家庭内ネットワークへ漏れないよう注意する
+・STPやDTPなどのL2制御通信の扱いに注意する
+・最初は単純な構成で接続確認を行う
+
+10. VirtualBoxサーバ群との接続
+CMLトポロジの右側には、VirtualBoxサーバ群を配置している。
+これらのサーバは、CMLのServer Access層を通してネットワークに接続される。
+
+10.1 Infra-01
+役割:
+・DNS
+・DHCP
+・NTP
+
+主な機能:
+・BINDによる名前解決
+・DHCPによるIP配布
+・chronyによる時刻同期
+・NTP Authentication
+
+10.2 App-01
+役割:
+・Web
+・File
+
+主な機能:
+・Apacheによる社内Web
+・部署別Web領域
+・NFSまたはvsftpdによるファイル共有
+・部署別ファイル領域
+
+10.3 Ops-01
+役割:
+・監視
+・Syslog
+
+主な機能:
+・ZabbixまたはPrometheusによる監視
+・rsyslogによるログ集約
+・SNMPv3監視
+・HTTP/DNS/DHCP監視
+・アラート通知
+
+10.4 SecMgmt-01
+役割:
+・Jump Server
+・RADIUS
+・TACACS+
+
+主な機能:
+・Jump Server経由の管理アクセス
+・RADIUSによる端末認証
+・TACACS+によるネットワーク機器管理者認証
+・コマンド認可
+・操作ログ記録
+
+10.5 Backup-01
+役割:
+・バックアップ
+・復元
+
+主な機能:
+・ネットワーク機器設定バックアップ
+・サーバ設定バックアップ
+・Web/Fileデータバックアップ
+・認証サーバ設定バックアップ
+・VirtualBox VMバックアップ
+・復元試験
+
+11. リンク種別
+本トポロジでは、リンクの種類を意識して設計する。
+
+11.1 L3リンク
+Core層とDistribution層の間はL3リンクを基本とする。
+OSPFにより経路交換を行う。
+
+対象例:
+・CORE1 - DIST1
+・CORE1 - DIST2
+・CORE2 - DIST1
+・CORE2 - DIST2
+・CORE1 - CORE2
+・CORE層 - EDGE1
+
+11.2 L2リンク
+Access層とDistribution層の間はL2接続を基本とする。
+必要に応じてTrunkやEtherChannelを利用する。
+
+対象例:
+・DIST1 - USER-ACCESS1
+・DIST2 - USER-ACCESS1
+・DIST1 - USER-ACCESS2
+・DIST2 - USER-ACCESS2
+・DIST1 - SERVER-ACCESS1
+・DIST2 - SERVER-ACCESS1
+・DIST1 - SERVER-ACCESS2
+・DIST2 - SERVER-ACCESS2
+
+11.3 External Connectorリンク
+CMLとVirtualBox間はExternal Connectorを利用して接続する。
+
+対象例:
+・SERVER-ACCESS1 - EXT-CONN1
+・SERVER-ACCESS2 - EXT-CONN2
+
+12. 想定VLAN
+本トポロジでは、以下のVLANを想定する。
+
+・VLAN10：営業部
+・VLAN20：人事部
+・VLAN30：総務部
+・VLAN40：システム開発部
+・VLAN50：システム管理部
+・VLAN60：サーバ用
+・VLAN70：管理用
+・VLAN80：監視・ログ用
+・VLAN90：検証・ゲスト用
+・VLAN100：新規事業用予備
+・VLAN110：バックアップ用
+
+CMLトポロジ図では、主にVLAN10〜50をUser Access層、VLAN60/70/80/110をServer Access層に関連付けている。
+
+13. ルーティング設計
+本トポロジでは、Core層とDistribution層の間でOSPFを利用する。
+
+ルーティング方針:
+・Core-Distribution間はL3リンクとする
+・OSPF Area 0を中心とする
+・Distribution層で各VLANのSVIを持つ
+・Access層は基本的にL2とする
+・EDGE1経由で外部接続や将来の支社接続を想定する
+
+これにより、Core層やDistribution層の片系障害時にも経路を切り替えられるようにする。
+
+14. 冗長化設計
+本トポロジでは、以下の冗長化を行う。
+
+・CORE1/CORE2の二重化
+・DIST1/DIST2の二重化
+・USER-ACCESS1/USER-ACCESS2の二重化
+・SERVER-ACCESS1/SERVER-ACCESS2の段階的二重化
+・OSPFによる経路冗長
+・HSRPによるゲートウェイ冗長
+・EtherChannelによるリンク冗長
+・STP root分散
+
+特にServer Access層については、初期段階では1台構成で接続を成功させ、次の段階で2台構成へ拡張する。
+
+15. セキュリティ設計
+本トポロジでは、以下のセキュリティ機能を実装する。
+
+・ACL
+・VTY ACL
+・SSH限定管理
+・Telnet禁止
+・管理VRF
+・SNMPv3
+・Syslog転送
+・NTP Authentication
+・DHCP Snooping
+・Dynamic ARP Inspection
+・Port Security
+・BPDU Guard
+・RADIUS
+・TACACS+
+
+特に管理アクセスは、管理PCからJump Serverを経由して行う。
+ネットワーク機器への管理者認証はTACACS+を利用し、端末認証はRADIUSを利用する。
+
+16. QoS設計
+障害時には、残ったuplinkへ通信が集中する可能性がある。
+そのため、QoSにより通信を重要度別に制御する。
+
+最優先:
+・OSPF
+・HSRP
+・SSH
+・TACACS+
+・RADIUS
+・SNMPv3
+・NTP
+・Syslog
+・監視アラート
+
+高優先:
+・業務Web
+・業務File
+・DNS
+・DHCP
+・社内業務通信
+
+低優先:
+・バックアップ
+・大容量ファイル転送
+・VMイメージ転送
+
+最低優先:
+・Guest/Lab通信
+・検証通信
+
+17. CMLノード数の目安
+本トポロジで想定するCMLノード数は、おおよそ15〜17ノード程度である。
+
+主なCMLノード:
+・EDGE1
+・CORE1
+・CORE2
+・DIST1
+・DIST2
+・USER-ACCESS1
+・USER-ACCESS2
+・SERVER-ACCESS1
+・SERVER-ACCESS2
+・EXT-CONN1
+・EXT-CONN2
+・必要に応じた検証PCノード
+・必要に応じたISP相当ノード
+
+CML Personalの20ノード制限を意識し、必要以上にノードを増やさない構成とする。
+VirtualBox上のサーバはCMLノード数には含めないため、サーバ機能はVirtualBox側に分離する。
+
+18. 構築順序
+推奨する構築順序は以下の通りである。
+
+1. CMLにCORE1/CORE2を配置する
+2. DIST1/DIST2を配置する
+3. Core-Distribution間のL3リンクを設定する
+4. OSPFを設定する
+5. USER-ACCESS1/USER-ACCESS2を配置する
+6. 部署別VLANを設定する
+7. DIST1/DIST2でSVIとHSRPを設定する
+8. SERVER-ACCESS1を配置する
+9. EXT-CONN1を接続する
+10. VirtualBoxサーバ群との疎通を確認する
+11. DNS/DHCP/Web/SSH/監視の基本通信を確認する
+12. ACLや管理アクセス制御を設定する
+13. Syslog、SNMPv3、NTP Authenticationを設定する
+14. QoSを設定する
+15. SERVER-ACCESS2とEXT-CONN2を追加する
+16. Server Access層の冗長化試験を行う
+17. 障害試験を行う
+18. 設計書と試験結果を整理する
+
+19. 障害試験
+本トポロジで実施する主な障害試験は以下である。
+
+・CORE1停止
+・CORE2停止
+・DIST1停止
+・DIST2停止
+・USER-ACCESS1停止
+・USER-ACCESS2停止
+・SERVER-ACCESS1停止
+・SERVER-ACCESS2停止
+・Access uplink断
+・EtherChannelメンバーリンク断
+・OSPF neighbor断
+・HSRP切替
+・External Connector切断
+・バックアップ中のuplink片系障害
+
+試験では、業務通信、管理通信、監視通信、バックアップ通信の影響を確認する。
+また、障害時に80%程度の業務継続が可能かを確認する。
+
+20. このCMLトポロジ図の重要ポイント
+本図の重要ポイントは以下である。
+
+・CML上に3層構造を再現している
+・Core層、Distribution層、Access層の役割が明確である
+・User Access層とServer Access層を分離している
+・VirtualBoxサーバ群はServer Access層経由で接続する
+・SERVER-ACCESS1のみの第1段階と、SERVER-ACCESS2追加後の第2段階を示している
+・External Connectorを利用してCMLとVirtualBoxを連携する
+・HSRP、OSPF、EtherChannel、ACL、QoSなどを実装できる構成である
+・CMLノード数を20ノード以内に収めやすい
+・将来の支社接続やVPN検証を想定してEDGE1を配置している
+
+21. まとめ
+本CMLトポロジ図は、中小企業向け模擬エンタープライズネットワークをCML上に構築するための基本構成を示している。
+Core層、Distribution層、User Access層、Server Access層を明確に分けることで、実企業のネットワークに近い構成を再現している。
+
+Server Access層については、最初にSERVER-ACCESS1のみでCMLとVirtualBoxの接続を成功させ、その後SERVER-ACCESS2を追加して冗長化する段階的構築方針を採用している。
+これにより、構築難易度を抑えながら、最終的にはサーバ基盤の可用性も確保できる構成となる。
+
+本トポロジをもとに、VLAN、OSPF、HSRP、ACL、管理VRF、NTP Authentication、SNMPv3、Syslog、RADIUS、TACACS+、QoS、バックアップ通信制御、障害試験を実施することで、設計から運用までを含む実践的なインフラ制作物にすることができる。

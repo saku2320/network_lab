@@ -1,0 +1,436 @@
+物理・仮想接続図 解説
+中小企業向け模擬エンタープライズネットワーク
+
+1. 物理・仮想接続図の概要
+本図は、中小企業向け模擬エンタープライズネットワークにおいて、CML上の仮想ネットワーク機器、VirtualBox上の仮想サーバ群、External Connector、物理PC、仮想NICの接続関係を示したものである。
+
+論理ネットワーク図がVLAN、IPアドレス、ルーティング、通信制御などの論理的な関係を表すのに対し、物理・仮想接続図では「どの環境がどのように接続されるか」を表す。
+本構成では、CMLでネットワーク機器を構築し、VirtualBoxでサーバ群を構築する。
+CMLとVirtualBoxは、External ConnectorとVirtualBox側の仮想ネットワークアダプタを利用して接続する。
+
+2. 図全体の構成
+本図は、主に以下の領域で構成される。
+
+・CML環境
+・External Connector
+・VirtualBoxホスト
+・VirtualBox内部ネットワーク
+・仮想マシン群
+・外部端末
+・VLAN一覧
+・サーバ配置一覧
+・段階構築方針
+
+CML環境側には、Core層、Distribution層、User Access層、Server Access層が存在する。
+VirtualBox側には、DNS、DHCP、NTP、Web、File、監視、ログ、認証、バックアップなどを担当する仮想サーバ群が存在する。
+
+3. CML環境側の構成
+CML環境では、仮想ネットワーク機器を用いて企業ネットワークを再現する。
+
+3.1 Core層
+Core層には、CORE1とCORE2を配置する。
+Core層はネットワーク全体の高速L3中継を担当する。
+
+主な役割:
+・Distribution層間のL3中継
+・OSPFによる経路制御
+・上位のEDGE1や外部接続への中継
+・冗長経路の確保
+
+3.2 Distribution層
+Distribution層には、DIST1とDIST2を配置する。
+Distribution層は、各VLANのSVI、HSRP、ACL、OSPF、DHCP relayなどを担当する。
+
+主な役割:
+・VLAN間ルーティング
+・HSRPによるデフォルトゲートウェイ冗長
+・ACLによる通信制御
+・DHCP relay
+・Core層とのOSPF接続
+・User Access層とServer Access層の集約
+
+3.3 User Access層
+User Access層には、USER-ACCESS1とUSER-ACCESS2を配置する。
+この層は社員PC、無線AP、IP電話、プリンタなどを収容する。
+
+接続対象:
+・営業部PC
+・人事部PC
+・総務部PC
+・システム開発部PC
+・システム管理部PC
+・無線AP
+・IP電話
+・プリンタ
+
+3.4 Server Access層
+Server Access層には、SERVER-ACCESS1とSERVER-ACCESS2を配置する。
+この層はVirtualBox上の仮想サーバ群を収容するためのAccess層である。
+
+主な役割:
+・サーバ用VLANの収容
+・管理用VLANの収容
+・監視・ログ用VLANの収容
+・バックアップ用VLANの収容
+・VirtualBox仮想サーバ群との接続
+・Distribution層への冗長接続
+
+4. Server Access層の段階構築方針
+本図では、Server Access層を段階的に構築する方針を示している。
+
+4.1 第1段階
+第1段階では、SERVER-ACCESS1のみを利用してCMLとVirtualBoxの接続を成功させる。
+
+目的:
+・CMLとVirtualBoxの接続を単純化する
+・基本的な疎通を早期に確認する
+・DNS、DHCP、Web、SSH、監視などの基本サービスを先に動作させる
+・接続トラブルの切り分けを容易にする
+
+第1段階の接続イメージ:
+VirtualBox仮想サーバ群
+→ VirtualBox仮想ネットワーク
+→ External Connector
+→ SERVER-ACCESS1
+→ DIST1 / DIST2
+
+4.2 第2段階
+第2段階では、SERVER-ACCESS2を追加し、Server Access層を冗長化する。
+
+目的:
+・Server Access層の単一障害点を減らす
+・SERVER-ACCESS1障害時でもサーバ群へ到達できる構成を目指す
+・Distribution層との接続を冗長化する
+・企業ネットワークに近い可用性を実現する
+
+確認項目:
+・SERVER-ACCESS1停止時のサーバ到達性
+・SERVER-ACCESS2停止時のサーバ到達性
+・DIST1停止時のサーバ到達性
+・DIST2停止時のサーバ到達性
+・STPまたはLACPの動作
+・監視アラートの発生
+・バックアップ通信の継続または制限
+
+5. External Connectorの役割
+External Connectorは、CML内の仮想ネットワークと外部の物理・仮想ネットワークを接続するための接続点である。
+本構成では、CMLとVirtualBoxを接続するために利用する。
+
+主な役割:
+・CML内のServer Access層とVirtualBox側ネットワークを接続する
+・CML機器からVirtualBox仮想サーバへ通信できるようにする
+・VirtualBox仮想サーバからCML上の機器や端末へ通信できるようにする
+・管理PCや社員PCとの接続にも応用できる
+
+注意点:
+・External Connectorの接続先を誤ると、ホストPCや学校ネットワークへ不要な影響を与える可能性がある
+・STPやDTPなどのL2制御プロトコルが外部ネットワークへ流れないよう注意する
+・必要なVLANだけをtrunkで通す設計にする
+・CMLとVirtualBoxの接続確認は段階的に行う
+
+6. VirtualBoxホストの役割
+VirtualBoxホストは、仮想サーバを動作させる物理PCである。
+今回の構成では、高性能ノートPCまたは専用PC上でVirtualBoxを実行する想定である。
+
+主な役割:
+・仮想サーバ群を動作させる
+・CMLとの接続用ネットワークアダプタを提供する
+・内部ネットワークやHost-onlyネットワークを作成する
+・必要に応じてBridge接続を使用する
+
+VirtualBoxホストで整理すべき項目:
+・物理NIC
+・Bridge Adapter
+・Host-only Adapter
+・Internal Network
+・各VMのNIC割り当て
+・CML接続用の仮想アダプタ
+
+7. VirtualBox側の仮想ネットワーク
+VirtualBox側では、用途に応じて仮想ネットワークを分ける。
+
+想定する仮想ネットワーク:
+・サーバ用ネットワーク
+・管理用ネットワーク
+・監視・ログ用ネットワーク
+・バックアップ用ネットワーク
+・必要に応じた検証用ネットワーク
+
+実装方式の例:
+方式1:
+1つの接続用ネットワークに各サーバを接続し、まず疎通を確認する。
+
+方式2:
+用途別に複数の仮想ネットワークを作成し、各VMのNICを分ける。
+
+方式3:
+サーバVMに複数NICを持たせ、業務用、管理用、バックアップ用を分離する。
+
+8. 仮想サーバ群の構成
+VirtualBox上には、役割ごとに分けた仮想サーバを配置する。
+
+8.1 Infra-01
+役割:
+・DNS
+・DHCP
+・NTP
+
+提供する機能:
+・BINDによる名前解決
+・DHCPによるIPアドレス配布
+・chronyによる時刻同期
+・NTP Authentication
+
+8.2 App-01
+役割:
+・Web
+・File
+
+提供する機能:
+・Apacheによる社内Web
+・部署別Web領域
+・NFSまたはvsftpdによるファイル共有
+・部署別ファイル領域
+・役職別権限制御
+
+8.3 Ops-01
+役割:
+・監視
+・Syslog
+
+提供する機能:
+・ZabbixまたはPrometheusによる監視
+・rsyslogによるログ集約
+・SNMPv3監視
+・HTTP/DNS/DHCP監視
+・アラート通知
+
+8.4 SecMgmt-01
+役割:
+・Jump Server
+・RADIUS
+・TACACS+
+
+提供する機能:
+・管理者の踏み台接続
+・RADIUSによる端末認証
+・TACACS+によるネットワーク機器管理者認証
+・コマンド認可
+・操作ログ記録
+
+8.5 Backup-01
+役割:
+・バックアップ
+・復元試験
+・世代管理
+
+提供する機能:
+・サーバ設定バックアップ
+・ネットワーク機器設定バックアップ
+・Web/Fileデータバックアップ
+・認証サーバ設定バックアップ
+・VirtualBox VMバックアップ
+・復元試験
+
+9. VLANと接続用途
+本構成では、部署別および用途別にVLANを分ける。
+
+VLAN10:
+営業部用ネットワーク
+
+VLAN20:
+人事部用ネットワーク
+
+VLAN30:
+総務部用ネットワーク
+
+VLAN40:
+システム開発部用ネットワーク
+
+VLAN50:
+システム管理部用ネットワーク
+
+VLAN60:
+サーバ用ネットワーク
+
+VLAN70:
+管理用ネットワーク
+
+VLAN80:
+監視・ログ用ネットワーク
+
+VLAN90:
+検証・ゲスト用ネットワーク
+
+VLAN100:
+新規事業用予備ネットワーク
+
+VLAN110:
+バックアップ用ネットワーク
+
+これらのVLANは、Distribution層でSVIとして終端され、HSRPによってデフォルトゲートウェイを冗長化する。
+
+10. CMLとVirtualBoxの接続の流れ
+CMLとVirtualBoxの接続の流れは以下の通りである。
+
+1. VirtualBoxホスト側でCML接続用の仮想ネットワークを作成する
+2. CML側にExternal Connectorを配置する
+3. External ConnectorをSERVER-ACCESS1へ接続する
+4. SERVER-ACCESS1で必要なVLANを通す
+5. VirtualBox上の各VMを該当するネットワークへ接続する
+6. CML側のDistribution層でSVIとルーティングを設定する
+7. CML機器とVirtualBoxサーバ間の疎通を確認する
+
+最初はSERVER-ACCESS1のみを使って接続を確認する。
+基本通信が安定した後、SERVER-ACCESS2を追加して冗長化する。
+
+11. 管理アクセスの流れ
+管理アクセスは、一般社員用ネットワークから直接行わない。
+管理PCから管理用VLANへ接続し、Jump Serverを経由してネットワーク機器やサーバを管理する。
+
+管理アクセスの流れ:
+管理PC
+→ 管理用VLAN
+→ SecMgmt-01のJump Server
+→ CML上のネットワーク機器
+→ 必要に応じて各サーバ
+
+管理アクセスに関する要件:
+・SSHのみ許可する
+・Telnetは禁止する
+・TACACS+で管理者認証を行う
+・管理者権限をNetAdmin、NetOperator、Auditorに分ける
+・管理操作はAccountingで記録する
+・認証障害時に備えてlocal fallbackを用意する
+
+12. 監視・ログ通信の流れ
+Ops-01は、ネットワーク機器とサーバの監視・ログ収集を行う。
+
+監視・ログ通信の流れ:
+・CML機器 → Ops-01へSyslog送信
+・各サーバ → Ops-01へSyslog送信
+・Ops-01 → CML機器へSNMPv3監視
+・Ops-01 → 各サーバへ死活監視
+・Ops-01 → Web/DNS/DHCPなどのサービス監視
+
+監視・ログ通信は、監視・ログ用VLANを中心に扱う。
+NTP Authenticationにより時刻同期を行い、ログの時刻整合性を保つ。
+
+13. バックアップ通信の流れ
+Backup-01は、ネットワーク機器や各サーバから設定やデータをバックアップする。
+
+バックアップ通信の流れ:
+Backup-01
+→ Infra-01
+→ App-01
+→ Ops-01
+→ SecMgmt-01
+→ CMLネットワーク機器
+
+バックアップ対象:
+・ネットワーク機器設定
+・CMLトポロジ
+・DNS設定
+・DHCP設定
+・NTP設定
+・Webコンテンツ
+・File共有データ
+・監視設定
+・Syslog設定
+・RADIUS設定
+・TACACS+設定
+・VirtualBox VM
+・設計書類
+
+バックアップ通信は帯域を多く使用する可能性があるため、バックアップ用VLANを利用する。
+また、QoSによりバックアップ通信を低優先にし、障害時には停止または制限する。
+
+14. 物理接続と仮想接続の違い
+本図では、物理接続と仮想接続が混在している。
+
+物理接続:
+・VirtualBoxホストの物理NIC
+・管理用PCや社員用PCの実際の接続
+・必要に応じた外部ネットワーク接続
+
+仮想接続:
+・CML内の仮想リンク
+・VirtualBox内部ネットワーク
+・仮想NIC
+・External ConnectorによるCMLと外部仮想ネットワークの接続
+
+このように、実機の物理配線と仮想環境内の接続を組み合わせて、企業ネットワークを模擬する。
+
+15. 第1段階の作業内容
+第1段階では、SERVER-ACCESS1のみを利用し、CMLとVirtualBoxの接続を成功させる。
+
+作業内容:
+・CMLにSERVER-ACCESS1を配置する
+・SERVER-ACCESS1をDIST1/DIST2へ接続する
+・External ConnectorをSERVER-ACCESS1へ接続する
+・VirtualBox側でCML接続用ネットワークを作成する
+・Infra-01、App-01、Ops-01、SecMgmt-01、Backup-01を接続する
+・基本疎通を確認する
+
+確認する内容:
+・CML機器から各サーバへpingできる
+・各サーバからデフォルトゲートウェイへpingできる
+・社員PCからWebサーバへアクセスできる
+・DNS名前解決ができる
+・DHCPでIPが配布される
+・管理PCからJump ServerへSSHできる
+・Ops-01で監視できる
+・Backup-01でバックアップ通信ができる
+
+16. 第2段階の作業内容
+第2段階では、SERVER-ACCESS2を追加して冗長化する。
+
+作業内容:
+・CMLにSERVER-ACCESS2を追加する
+・SERVER-ACCESS2をDIST1/DIST2へ接続する
+・SERVER-ACCESS1/SERVER-ACCESS2間のL2設計を確認する
+・STPまたはLACPの動作を確認する
+・VirtualBox側の接続方式を調整する
+・障害試験を実施する
+
+確認する内容:
+・SERVER-ACCESS1停止時にサーバへ到達できる
+・SERVER-ACCESS2停止時にサーバへ到達できる
+・DIST1停止時にサーバへ到達できる
+・DIST2停止時にサーバへ到達できる
+・STPのループ防止が機能する
+・監視アラートが発生する
+・障害時にも管理アクセスが可能である
+
+17. 設計上の注意点
+CMLとVirtualBoxを接続する場合は、以下の点に注意する。
+
+・External Connectorの接続先を明確にする
+・VirtualBox側のネットワークアダプタ名を記録する
+・不要なVLANをtrunkに通さない
+・学校ネットワークや家庭内ネットワークへ不要なL2制御フレームを流さない
+・DHCPサーバが外部ネットワークへ影響しないようにする
+・サーバVMのNIC割り当てを明確にする
+・第1段階と第2段階の構成差分を記録する
+・障害試験前に設定バックアップを取得する
+
+18. この図の重要ポイント
+本図の重要ポイントは以下である。
+
+・CMLとVirtualBoxの接続関係を示している
+・物理ホスト、仮想ネットワーク、仮想マシンの関係を整理している
+・Server Access層を通してサーバ群を接続している
+・SERVER-ACCESS1のみの第1段階と、SERVER-ACCESS2追加後の第2段階を示している
+・ユーザー端末とサーバ群をAccess層で分離している
+・管理、監視、バックアップ用の通信経路を分けている
+・CMLとVirtualBoxの結合試験に必要な確認項目を整理しやすい
+
+19. まとめ
+本物理・仮想接続図は、CML上の仮想ネットワークとVirtualBox上の仮想サーバ群をどのように接続するかを示した図である。
+ネットワーク側ではCore、Distribution、User Access、Server Accessを構成し、サーバ側ではInfra-01、App-01、Ops-01、SecMgmt-01、Backup-01を構築する。
+
+最初はSERVER-ACCESS1のみでCMLとVirtualBoxの接続を成功させ、基本通信を確認する。
+その後、SERVER-ACCESS2を追加してサーバアクセス層を冗長化することで、企業ネットワークに近い可用性を持つ構成へ発展させる。
+
+この図は、CML担当とサーバ担当が結合作業を行う際の基準となる。
+どのネットワークがどのサーバに接続されるのか、どの通信がどの経路を通るのかを整理するために利用する。
